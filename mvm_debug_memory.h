@@ -1,37 +1,61 @@
 #if !defined(MVM_DEBUG_MEMORY_H)
 
+#define DEBUG_INFO_LIST_INITIAL_SIZE 32
+
 #include <stdlib.h>
 
 /* 
     NOTE(Marko): USAGE: #define DEBUG_MEMORY and then #include "mvm_debug_memory.h"
 */
 
-enum memory_operation_type
-{
-    MemoryOperationType_InitialAllocation,
-    MemoryOperationType_ReAllocation,
-    MemoryOperationType_Free,
-    MemoryOperationType_Comment,
-};
-
-
 // TODO(Marko): Where are we going to store the debug memory information? 
 //              Presumably somewhere global? How does that work? Maybe write to 
 //              file for each allocation? hmmmm
 // NOTE(Marko): Using files would enable the usage of other tooling. Less work 
 //              for me? 
+
+//
+// NOTE(Marko): Debug string for internal use.
+//
+
+typedef struct mvm_debug_memory_string
+{
+    size_t Length;
+    size_t MemoryAllocated;
+    char *Contents;
+
+} mvm_debug_memory_string;
+
+
+typedef enum memory_operation_type
+{
+    MemoryOperationType_InitialAllocation,
+    MemoryOperationType_ReAllocation,
+    MemoryOperationType_Free,
+    MemoryOperationType_Comment,
+} memory_operation_type;
+
+
 typedef struct mvm_debug_memory_info
 {
+    mvm_debug_memory_string Filename;
     memory_operation_type MemoryOperationType;
-    int Lines;
-    // TODO(Marko): Custom string? C strings really suck
-    char *Filenames;
+    int LineNumber;
 
 } mvm_debug_memory_info;
 
-mvm_debug_memory_info *GlobalDebugInfo = 0;
-int GlobalDebugInfoCount = 0;
-int GlobalDebugOnCount = 0;
+
+typedef struct mvm_debug_memory_list
+{
+    size_t TurnOnCount;
+    size_t DebugInfoCount;
+    size_t MemoryAllocated;
+    mvm_debug_memory_info *DebugInfoList;
+} mvm_debug_memory_list;
+
+
+// NOTE(Marko): Global Variable to hold the debug info. 
+mvm_debug_memory_list *GlobalDebugInfoList = 0;
 
 
 void TurnOnDebugInfo(void)
