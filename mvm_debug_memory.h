@@ -60,16 +60,46 @@ mvm_debug_memory_list *GlobalDebugInfoList = 0;
 
 void TurnOnDebugInfo(void)
 {
-    // initialize mvm_debug_memory_info on the heap
-    if(!GlobalDebugInfo)
+    
+    if(!GlobalDebugInfoList)
     {
-       //actually initialize 
+        // NOTE(Marko): If GlobalDebugInfo hasn't been initialized yet, 
+        //              initialize it. 
+        GlobalDebugInfoList = 
+            (mvm_debug_memory_list *)malloc((sizeof *GlobalDebugInfoList));
+
+        GlobalDebugInfoList->TurnOnCount = 1;
+        GlobalDebugInfoList->DebugInfoCount = 0;
+        GlobalDebugInfoList->MemoryAllocated = DEBUG_INFO_LIST_INITIAL_SIZE;
+
+        GlobalDebugInfoList->DebugInfoList = 
+            (mvm_debug_memory_info *)malloc(
+                (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                GlobalDebugInfoList->MemoryAllocated);
     }
-    GlobalDebugOn++;
+    else
+    {
+        GlobalDebugInfoList->TurnOnCount++;        
+    }
 }
 
 void TurnOffDebugInfo(void)
 {
+    if(GlobalDebugInfoList)
+    {
+        if(GlobalDebugInfoList->TurnOnCount > 0)
+        {
+            GlobalDebugInfoList->TurnOnCount--;
+        }
+        else
+        {
+            printf("TurnOffDebugInfo() called without corresponding TurnOnDebugInfo()\n");
+        }
+    }
+    else
+    {
+        printf("TurnOffDebugInfo() called before ever calling TurnOnDebugInfo()\n");
+    }
 
 }
 
