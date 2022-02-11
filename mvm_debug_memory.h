@@ -1,18 +1,33 @@
 #if !defined(MVM_DEBUG_MEMORY_H)
 
+// TODO(Marko): Author information etc
+
+/*
+    TODO(Marko): A list of things that would be nice to have:
+
+                 - A configurable "max number of debug information" so that we  
+                   eventually stop adding to the list, thereby preventing 
+                   unfettered growth of the debug info
+                 - A file-writing system that can write memory information to 
+                   logs. 
+                 - Pass __FILE__ and __LINE__ to TurnOnDebugInfo() and 
+                   TurnOffDebugInfo(), and record all the places that they are 
+                   called so that it's easy to find them and remove them when 
+                   done. 
+                 - Store the address of the variable that is allocated or 
+                   freed. Possibly include old and new addresses for realloc?
+*/
+
 #define DEBUG_INFO_LIST_INITIAL_SIZE 32
 
 #include <stdlib.h>
 
 /* 
-    NOTE(Marko): USAGE: #define DEBUG_MEMORY and then #include "mvm_debug_memory.h"
-*/
+    NOTE(Marko): USAGE: #define DEBUG_MEMORY 
+                        #include "mvm_debug_memory.h"
 
-// TODO(Marko): Where are we going to store the debug memory information? 
-//              Presumably somewhere global? How does that work? Maybe write to 
-//              file for each allocation? hmmmm
-// NOTE(Marko): Using files would enable the usage of other tooling. Less work 
-//              for me? 
+                        OR pass DDEBUG_MEMORY=1 as a compiler flag. 
+*/
 
 //
 // NOTE(Marko): Debug string for internal use.
