@@ -27,6 +27,31 @@ typedef struct mvm_debug_memory_string
 } mvm_debug_memory_string;
 
 
+mvm_debug_memory_string ConstStringToMVMDebugMemoryString(const char *String)
+{
+    mvm_debug_memory_string Result;
+    Result.Length = strlen(String);
+    Result.MemoryAllocated = 1;
+    while(Result.MemoryAllocated <= Result.Length)
+    {
+        Result.MemoryAllocated *= 2;
+    }
+
+    Result.Contents = (char *)malloc(Result.MemoryAllocated);
+
+    int CharIndex = 0;
+    while(String[CharIndex])
+    {
+        Result.Contents[CharIndex] = String[CharIndex];
+        CharIndex++;
+    }
+
+    // NOTE(Marko): Null terminate
+    Result.Contents[CharIndex] = '\0';
+
+    return Result;
+}
+
 typedef enum memory_operation_type
 {
     MemoryOperationType_InitialAllocation,
