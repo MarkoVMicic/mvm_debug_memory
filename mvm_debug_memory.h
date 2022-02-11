@@ -189,8 +189,36 @@ void MVMDebugFree(void *Buffer,
                   const char *Filename,
                   int LineNumber)
 {
-    printf("File: %s", Filename);
-    printf("Line: %d\n", LineNumber);
+    if(Buffer && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
+    {
+        // NOTE(Marko): Only write to the debug info list if we are freeing 
+        //              actual memory, if the GlobalDebugInfoList has been 
+        //              initialized, and if we are currently in a Turned-On 
+        //              state for the Debug Memory tool. 
+
+        int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
+        GlobalDebugInfoList->DebugInfoCount++;
+        if(GlobalDebugInfoList->MemoryAllocated <= 
+           GlobalDebugInfoList->DebugInfoCount)
+        {
+            // NOTE(Marko): Grow the debug info list if we've run out of 
+            //              memory. 
+
+            GlobalDebugInfoList->MemoryAllocated *= 2;
+            GlobalDebugInfoList->DebugInfoList = 
+                (mvm_debug_memory_info *)realloc(
+                    GlobalDebugInfoList->DebugInfoList,
+                    (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                    GlobalDebugInfoList->MemoryAllocated);
+        }
+
+        mvm_debug_memory_info *DebugInfo = 
+            &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+        DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
+        DebugInfo->MemoryOperationType = MemoryOperationType_Free;
+        DebugInfo->LineNumber = LineNumber;      
+    }
+
     free(Buffer);
 }
 
