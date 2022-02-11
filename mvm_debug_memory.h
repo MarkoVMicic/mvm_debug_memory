@@ -136,10 +136,36 @@ void *MVMDebugMalloc(size_t MemorySize,
 {
     void *Result = malloc(MemorySize);
 
-    if(GlobalDebugOn)
+    if(Result && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
     {
-        printf("File: %s\n", Filename);
-        printf("Line: %d\n", LineNumber);        
+        // TODO(Marko): This should probably be factored into a function where 
+        //              you pass the Filename, LineNumber, MemoryAddress (i.e. 
+        //              Result), and the MemoryOperationType. 
+        // NOTE(Marko): Only commit information to the debug information list 
+        //              if malloc() succeeded, and GlobalDebugInfoList has been 
+        //              initialized, and the debug memory tool has been turned 
+        //              on. 
+        int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
+        GlobalDebugInfoList->DebugInfoCount++;
+        if(GlobalDebugInfoList->MemoryAllocated <= 
+           GlobalDebugInfoList->DebugInfoCount)
+        {
+            // NOTE(Marko): Grow the debug info list if we've run out of 
+            //              memory. 
+
+            GlobalDebugInfoList->MemoryAllocated *= 2;
+            GlobalDebugInfoList->DebugInfoList = 
+                (mvm_debug_memory_info *)realloc(
+                    GlobalDebugInfoList->DebugInfoList,
+                    (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                    GlobalDebugInfoList->MemoryAllocated);
+        }
+
+        mvm_debug_memory_info *DebugInfo = 
+            &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+        DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
+        DebugInfo->MemoryOperationType = MemoryOperationType_InitialAllocation;
+        DebugInfo->LineNumber = LineNumber;
     }
 
     return Result;
