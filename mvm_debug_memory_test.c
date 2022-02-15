@@ -4,12 +4,21 @@
 
 int main(int argc, char **argv)
 {
+    TurnOnDebugInfo();
 
-    int *array = (int *)malloc((sizeof *array) * 32);
+    int *InformationArray = (int *)malloc((sizeof *InformationArray) * 32);
 
-    free(array);
+    free(InformationArray);
 
+    TurnOffDebugInfo();
+
+    int *NoInformationArray = (int *)malloc((sizeof *InformationArray) * 64);
+
+    free(NoInformationArray);
+
+    MVMDebugMemoryPrintAllocations();
 
 
     return(0);   
 }
+
