@@ -73,6 +73,7 @@ typedef enum memory_operation_type
     MemoryOperationType_ReAllocation,
     MemoryOperationType_Free,
     MemoryOperationType_Comment,
+    MemoryOperationType_TurnOn,
 } memory_operation_type;
 
 
@@ -91,6 +92,7 @@ typedef struct mvm_debug_memory_list
     size_t DebugInfoCount;
     size_t MemoryAllocated;
     mvm_debug_memory_info *DebugInfoList;
+    
 } mvm_debug_memory_list;
 
 
@@ -98,7 +100,8 @@ typedef struct mvm_debug_memory_list
 mvm_debug_memory_list *GlobalDebugInfoList = 0;
 
 
-void TurnOnDebugInfo(void)
+void TurnOnDebugInfo(const char *Filename,
+                     int LineNumber)
 {
     
     if(!GlobalDebugInfoList)
@@ -121,6 +124,29 @@ void TurnOnDebugInfo(void)
     {
         GlobalDebugInfoList->TurnOnCount++;        
     }
+
+    // NOTE(Marko): Add this turn on call to the debuginfolist. 
+    int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
+    GlobalDebugInfoList->DebugInfoCount++;
+
+    if(GlobalDebugInfoList->MemoryAllocated <= 
+       GlobalDebugInfoList->DebugInfoCount)
+    {
+        // NOTE(Marko): Grow the size of the list since we've run out of 
+        //              memory. 
+        GlobalDebugInfoList->MemoryAllocated *= 2;
+        GlobalDebugInfoList->DebugInfoList = 
+            (mvm_debug_memory_info *)realloc(
+                GlobalDebugInfoList->DebugInfoList,
+                (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                GlobalDebugInfoList->MemoryAllocated);
+    }
+
+    mvm_debug_memory_info *DebugInfo = 
+        &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+    DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
+    DebugInfo->MemoryOperationType = MemoryOperationType_TurnOn;
+    DebugInfo->LineNumber = LineNumber;
 }
 
 void TurnOffDebugInfo(void)
@@ -149,7 +175,8 @@ void *MVMDebugMalloc(size_t MemorySize,
                      const char *Filename, 
                      int LineNumber)
 {
-    void *Result = malloc(MemorySize);
+    void *Result = 0;
+    Result = malloc(MemorySize);
 
     if(Result && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
     {
@@ -160,8 +187,10 @@ void *MVMDebugMalloc(size_t MemorySize,
         //              if malloc() succeeded, and GlobalDebugInfoList has been 
         //              initialized, and the debug memory tool has been turned 
         //              on. 
+
         int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
         GlobalDebugInfoList->DebugInfoCount++;
+
         if(GlobalDebugInfoList->MemoryAllocated <= 
            GlobalDebugInfoList->DebugInfoCount)
         {
