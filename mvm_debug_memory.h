@@ -74,6 +74,8 @@ typedef enum memory_operation_type
     MemoryOperationType_Free,
     MemoryOperationType_Comment,
     MemoryOperationType_TurnOn,
+    MemoryOperationType_TurnOff,
+
 } memory_operation_type;
 
 
@@ -150,12 +152,36 @@ void TurnOnDebugInfo(const char *Filename,
 }
 
 void TurnOffDebugInfo(void)
+void TurnOffDebugInfo(const char *Filename,
+                      int LineNumber)
 {
     if(GlobalDebugInfoList)
     {
         if(GlobalDebugInfoList->TurnOnCount > 0)
         {
             GlobalDebugInfoList->TurnOnCount--;
+            // NOTE(Marko): Add this turn off call to the debuginfolist. 
+            int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
+            GlobalDebugInfoList->DebugInfoCount++;
+
+            if(GlobalDebugInfoList->MemoryAllocated <= 
+               GlobalDebugInfoList->DebugInfoCount)
+            {
+                // NOTE(Marko): Grow the size of the list since we've run out 
+                //              of memory. 
+                GlobalDebugInfoList->MemoryAllocated *= 2;
+                GlobalDebugInfoList->DebugInfoList = 
+                    (mvm_debug_memory_info *)realloc(
+                        GlobalDebugInfoList->DebugInfoList,
+                        (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                        GlobalDebugInfoList->MemoryAllocated);
+            }
+
+            mvm_debug_memory_info *DebugInfo = 
+                &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+            DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
+            DebugInfo->MemoryOperationType = MemoryOperationType_TurnOff;
+            DebugInfo->LineNumber = LineNumber;
         }
         else
         {
@@ -317,6 +343,10 @@ void MVMDebugMemoryPrintAllocations(void)
             {
                 strcpy(MemoryOperationTypeString, "TurnOn");
             } break;
+            case MemoryOperationType_TurnOff:
+            {
+                strcpy(MemoryOperationTypeString, "TurnOff");
+            } break;
             case MemoryOperationType_Comment:
             {
                 strcpy(MemoryOperationTypeString, "\0");
@@ -340,7 +370,8 @@ void MVMDebugMemoryPrintAllocations(void)
     #define realloc(m, n) MVMDebugRealloc(m, n, __FILE__, __LINE__)
     #define free(n) MVMDebugFree(n, __FILE__, __LINE__)
 
-    #define TurnOn() TurnOnDebugInfo(__FILE__, __LINE__)
+    #define TurnOnDebugInfo() TurnOnDebugInfo(__FILE__, __LINE__)
+    #define TurnOffDebugInfo() TurnOffDebugInfo(__FILE__, __LINE__)
 
 #else
     // NOTE(Marko): This allows you to write memory comments and memory print 
@@ -350,7 +381,8 @@ void MVMDebugMemoryPrintAllocations(void)
     #define MVMDebugMemoryPrintAllocations() 
     #define InitializeDebugInfo()
     #define FreeDebugInfo()
-
+    #define TurnOnDebugInfo() 
+    #define TurnOffDebugInfo() 
 
 #endif
 
