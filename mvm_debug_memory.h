@@ -275,6 +275,59 @@ void MVMDebugMemoryComment(char *MemoryComment)
 void MVMDebugMemoryPrintAllocations(void)
 {
 
+    printf("Turn on - Turn Off calls (0 means debug is off now): %d\n", 
+           GlobalDebugInfoList->TurnOnCount);
+    printf("Debug Memory Operations Count: %d\n", 
+           GlobalDebugInfoList->DebugInfoCount);
+
+    // TODO(Marko): Compute total amount of memory used for debugging purposes 
+    //              in bytes. 
+    printf("Debug Info List Allocated Size: %d\n",
+           GlobalDebugInfoList->MemoryAllocated);
+
+    printf("------------\n");
+    for(int DebugInfoIndex = 0; 
+        DebugInfoIndex < GlobalDebugInfoList->DebugInfoCount; 
+        ++DebugInfoIndex)
+    {
+        printf("Allocation %d:\n", DebugInfoIndex);
+
+        mvm_debug_memory_info DebugInfo = 
+            GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+        
+        char MemoryOperationTypeString[32];
+        switch(DebugInfo.MemoryOperationType)
+        {
+            case MemoryOperationType_InitialAllocation:
+            {
+                strcpy(MemoryOperationTypeString, "malloc");
+
+            } break;
+            case MemoryOperationType_ReAllocation:
+            {
+                strcpy(MemoryOperationTypeString, "realloc");
+
+            } break;
+            case MemoryOperationType_Free:
+            {
+                strcpy(MemoryOperationTypeString, "free");
+
+            } break;
+            case MemoryOperationType_TurnOn:
+            {
+                strcpy(MemoryOperationTypeString, "TurnOn");
+            } break;
+            case MemoryOperationType_Comment:
+            {
+                strcpy(MemoryOperationTypeString, "\0");
+            } break;
+        }
+        printf("\t%s called\n", MemoryOperationTypeString);
+        printf("\tin file %s\n", DebugInfo.Filename.Contents);
+        printf("\ton line %d\n", DebugInfo.LineNumber);
+        printf("------------\n");
+    }
+    printf("\n\n");
 }
 
 
