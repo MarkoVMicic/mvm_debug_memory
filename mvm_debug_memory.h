@@ -82,8 +82,31 @@ typedef enum memory_operation_type
 typedef struct mvm_debug_memory_info
 {
     mvm_debug_memory_string Filename;
-    memory_operation_type MemoryOperationType;
     int LineNumber;
+
+    // TODO(Marko): Implement sort on the current address. This will make 
+    //              finding the allocation easier.
+    // NOTE(Marko): - For malloc(), realloc(), stores the current address of 
+    //                the pointer. 
+    //              - For TurnOn and TurnOff, stores 0
+    //              - When freed, stores -1
+    void *CurrentAddress;
+    // NOTE(Marko): PreviousAddress = 0 if not applicable.
+    // NOTE(Marko): PreviousAddress used to check for usage after free. 
+    void *PreviousAddress;
+
+    void *InitialAddress;
+    int Freed;
+
+    int MemoryOperationTypesAllocated;
+    int MemoryOperationTypesCount;
+    memory_operation_type *MemoryOperationTypes;
+
+    // NOTE(Marko): Store current address of allocation for easier search. 
+    //              This is to ensure that reallocations are easier to find
+    int AddressesAllocated;
+    int AddressesCount;
+    void **Addresses; 
 
 } mvm_debug_memory_info;
 
