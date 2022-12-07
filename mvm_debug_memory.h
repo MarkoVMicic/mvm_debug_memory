@@ -129,8 +129,8 @@ typedef struct mvm_debug_memory_list
 mvm_debug_memory_list *GlobalDebugInfoList = 0;
 
 
-void TurnOnDebugInfo(const char *Filename,
-                     int LineNumber)
+void MVMTurnOnDebugInfo(const char *Filename,
+                        int LineNumber)
 {
     
     if(!GlobalDebugInfoList)
@@ -178,9 +178,8 @@ void TurnOnDebugInfo(const char *Filename,
     DebugInfo->LineNumber = LineNumber;
 }
 
-void TurnOffDebugInfo(void)
-void TurnOffDebugInfo(const char *Filename,
-                      int LineNumber)
+void MVMTurnOffDebugInfo(const char *Filename,
+                         int LineNumber)
 {
     if(GlobalDebugInfoList)
     {
@@ -397,8 +396,9 @@ void MVMDebugMemoryPrintAllocations(void)
     #define realloc(m, n) MVMDebugRealloc(m, n, __FILE__, __LINE__)
     #define free(n) MVMDebugFree(n, __FILE__, __LINE__)
 
-    #define TurnOnDebugInfo() TurnOnDebugInfo(__FILE__, __LINE__)
-    #define TurnOffDebugInfo() TurnOffDebugInfo(__FILE__, __LINE__)
+    #define MVMTurnOnDebugInfo() MVMTurnOnDebugInfo(__FILE__, __LINE__)
+    #define MVMTurnOffDebugInfo() MVMTurnOffDebugInfo(__FILE__, __LINE__)
+    #define MVMDebugMemoryComment(m) MVMDebugMemoryComment(m, __FILE__, __LINE__)
 
 #else
     // NOTE(Marko): This allows you to write memory comments and memory print 
@@ -408,8 +408,8 @@ void MVMDebugMemoryPrintAllocations(void)
     #define MVMDebugMemoryPrintAllocations() 
     #define InitializeDebugInfo()
     #define FreeDebugInfo()
-    #define TurnOnDebugInfo() 
-    #define TurnOffDebugInfo() 
+    #define MVMTurnOnDebugInfo() 
+    #define MVMTurnOffDebugInfo() 
 
 #endif
 
