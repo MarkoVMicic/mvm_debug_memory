@@ -19,6 +19,7 @@
 */
 
 #define DEBUG_INFO_LIST_INITIAL_SIZE 32
+#define DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE 8
 
 #include <stdlib.h>
 
@@ -69,12 +70,15 @@ mvm_debug_memory_string ConstStringToMVMDebugMemoryString(const char *String)
 
 typedef enum memory_operation_type
 {
+    MemoryOperationType_NotAssigned = 0,
+
     MemoryOperationType_InitialAllocation,
     MemoryOperationType_ReAllocation,
     MemoryOperationType_Free,
     MemoryOperationType_Comment,
     MemoryOperationType_TurnOn,
     MemoryOperationType_TurnOff,
+
 
 } memory_operation_type;
 
@@ -114,8 +118,8 @@ typedef struct mvm_debug_memory_info
 typedef struct mvm_debug_memory_list
 {
     size_t TurnOnCount;
-    size_t DebugInfoCount;
-    size_t MemoryAllocated;
+    size_t DebugInfoUnitsCount;
+    size_t DebugInfoUnitsAllocated;
     mvm_debug_memory_info *DebugInfoList;
     
 } mvm_debug_memory_list;
