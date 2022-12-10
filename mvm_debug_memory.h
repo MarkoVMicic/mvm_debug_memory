@@ -135,6 +135,28 @@ typedef struct mvm_debug_memory_list
 mvm_debug_memory_list *GlobalDebugInfoList = 0;
 
 
+mvm_debug_memory_info *
+MVMSearchDebugInfoListByCurrentAddress(void *SearchedAddress)
+{
+    mvm_debug_memory_info *Result = 0;   
+    if (GlobalDebugInfoList)
+    {
+        for(int DebugInfoUnitIndex = 0; 
+            DebugInfoUnitIndex < GlobalDebugInfoList->DebugInfoUnitsCount; 
+            DebugInfoUnitIndex++)
+        {
+            mvm_debug_memory_info *DebugInfoUnit = GlobalDebugInfoList->DebugInfoList + DebugInfoUnitIndex;
+            if(DebugInfoUnit->CurrentAddress == SearchedAddress)
+            {
+                Result = DebugInfoUnit;
+                break;
+            }
+        }
+    }
+    return(Result);
+}
+
+
 void MVMTurnOnDebugInfo(const char *Filename,
                         int LineNumber)
 {
