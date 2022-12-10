@@ -445,36 +445,122 @@ void MVMDebugFree(void *Buffer,
                   const char *Filename,
                   int LineNumber)
 {
+    // TODO(Marko): Separate this operation into two parts:
+    //              1) Insert a new piece of information into the debug info 
+    //                 list
+    //              2) Search the Debug Info List for the memory operation 
+    //                 that corresponds to the current address, and fill in 
+    //                 the information there. 
     if(Buffer && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
     {
-        // NOTE(Marko): Only write to the debug info list if we are freeing 
-        //              actual memory, if the GlobalDebugInfoList has been 
-        //              initialized, and if we are currently in a Turned-On 
-        //              state for the Debug Memory tool. 
+        // NOTE(Marko): Only write to the debug info list if: 
+        //              1) We are freeing actual memory, and not a null 
+        //              pointer 
+        //              2) The GlobalDebugInfoList has been initialized
+        //              3) We are currently in a Turned-On state for the Debug 
+        //                 Memory tool. 
 
-        int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
-        GlobalDebugInfoList->DebugInfoCount++;
-        if(GlobalDebugInfoList->MemoryAllocated <= 
-           GlobalDebugInfoList->DebugInfoCount)
-        {
-            // NOTE(Marko): Grow the debug info list if we've run out of 
-            //              memory. 
-
-            GlobalDebugInfoList->MemoryAllocated *= 2;
-            GlobalDebugInfoList->DebugInfoList = 
-                (mvm_debug_memory_info *)realloc(
-                    GlobalDebugInfoList->DebugInfoList,
-                    (sizeof GlobalDebugInfoList->DebugInfoList) * 
-                    GlobalDebugInfoList->MemoryAllocated);
-        }
+        // NOTE(Marko): free() is supposed to free something that currently 
+        //              exists. So we search via the current address.
 
         mvm_debug_memory_info *DebugInfo = 
-            &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
-        DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
-        DebugInfo->MemoryOperationType = MemoryOperationType_Free;
-        DebugInfo->LineNumber = LineNumber;      
-    }
+            MVMSearchDebugInfoListByCurrentAddress(Buffer);
 
+        if(DebugInfo)
+        {
+            DebugInfo->DebugInfoOpCount++;
+
+
+            int FilenameIndex = DebugInfo->FilenamesCount; 
+            DebugInfo->FilenamesCount++;
+            if(DebugInfo->FilenamesAllocated <= DebugInfo->FilenamesCount)
+            {
+                // NOTE(Marko): Increase size of filenames array if necessary
+                while(DebugInfo->FilenamesAllocated <= 
+                      DebugInfo->FilenamesCount)
+                {
+                    DebugInfo->FilenamesAllocated *= 2;
+                }
+                DebugInfo->Filenames = 
+                    (mvm_debug_memory_string *)realloc(
+                        DebugInfo->Filenames,
+                        (sizeof DebugInfo->Filenames) * 
+                        DebugInfo->FilenamesAllocated);
+            }
+            DebugInfo->Filenames[FilenameIndex] = 
+                ConstStringToMVMDebugMemoryString(Filename);
+
+            int LineNumberIndex = DebugInfo->LineNumbersCount;
+            DebugInfo->LineNumbersCount++;
+            if(DebugInfo->LineNumbersAllocated <= DebugInfo->LineNumbersCount)
+            {
+                // NOTE(Marko): Increase size of line numbers array if 
+                //              necessary
+                while(DebugInfo->LineNumbersAllocated <= 
+                      DebugInfo->LineNumbersCount)
+                {
+                    DebugInfo->LineNumbersAllocated *= 2;
+                }
+                DebugInfo->LineNumbers = 
+                    (int *)realloc(
+                        DebugInfo->LineNumbers,
+                        (sizeof DebugInfo->LineNumbers) * 
+                        DebugInfo->LineNumbersAllocated);
+            }
+            DebugInfo->LineNumbers[LineNumberIndex] = LineNumber;
+
+            DebugInfo->PreviousAddress = DebugInfo->CurrentAddress;
+            // NOTE(Marko): Once freed, set current address to -1
+            DebugInfo->CurrentAddress = (void *)-1;    
+            DebugInfo->Freed = 1;
+
+            int MemoryOperationTypeIndex = 
+                DebugInfo->MemoryOperationTypesCount;
+            DebugInfo->MemoryOperationTypesCount++;
+            if(DebugInfo->MemoryOperationTypesAllocated <=
+               DebugInfo->MemoryOperationTypesCount)
+            {
+                while(DebugInfo->MemoryOperationTypesAllocated <=
+                      DebugInfo->MemoryOperationTypesCount)
+                {
+                    DebugInfo->MemoryOperationTypesAllocated *= 2;
+                }
+                DebugInfo->MemoryOperationTypes = 
+                    (memory_operation_type *)realloc(
+                        DebugInfo->MemoryOperationTypes,
+                        (sizeof DebugInfo->MemoryOperationTypes) * 
+                        DebugInfo->MemoryOperationTypesAllocated);
+            }
+            DebugInfo->MemoryOperationTypes[MemoryOperationTypeIndex] =
+                MemoryOperationType_Free;
+
+            int AddressesIndex = DebugInfo->AddressesCount;
+            DebugInfo->AddressesCount++;
+            if(DebugInfo->AddressesAllocated <= 
+                DebugInfo->AddressesCount)
+            {
+                // NOTE(Marko): Grow the addresses array if necessary
+                while(DebugInfo->AddressesAllocated <=
+                      DebugInfo->AddressesCount)
+                {
+                    DebugInfo->AddressesAllocated *= 2;
+                }
+                DebugInfo->Addresses = 
+                    (void *)realloc(
+                        DebugInfo->Addresses,
+                        (sizeof DebugInfo->Addresses) * 
+                        DebugInfo->AddressesAllocated);
+            }
+            DebugInfo->Addresses[AddressesIndex] = 
+                DebugInfo->CurrentAddress;
+
+        }
+        else
+        {
+            printf("Error while attempting to free address %p in file %s on line %d\n", Buffer, Filename, LineNumber);
+            printf("Unable to find address at %p\n", Buffer);
+        }
+    }
     free(Buffer);
 }
 
