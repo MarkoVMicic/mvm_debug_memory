@@ -85,8 +85,14 @@ typedef enum memory_operation_type
 
 typedef struct mvm_debug_memory_info
 {
-    mvm_debug_memory_string Filename;
-    int LineNumber;
+    int DebugInfoOpCount;
+    int FilenamesCount;
+    int FilenamesAllocated;
+    mvm_debug_memory_string *Filenames;
+
+    int LineNumbersCount;
+    int LineNumbersAllocated;
+    int *LineNumbers;
 
     // TODO(Marko): Implement sort on the current address. This will make 
     //              finding the allocation easier.
