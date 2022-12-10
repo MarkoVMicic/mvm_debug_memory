@@ -340,38 +340,90 @@ void *MVMDebugMalloc(size_t MemorySize,
 
     if(Result && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
     {
-        // TODO(Marko): This should probably be factored into a function where 
-        //              you pass the Filename, LineNumber, MemoryAddress (i.e. 
-        //              Result), and the MemoryOperationType. 
         // NOTE(Marko): Only commit information to the debug information list 
-        //              if malloc() succeeded, and GlobalDebugInfoList has been 
-        //              initialized, and the debug memory tool has been turned 
-        //              on. 
+        //              if 
+        //              1) malloc() succeeded 
+        //              2) GlobalDebugInfoList has been initialized 
+        //              3) the debug memory tool has been turned on. 
 
-        int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
-        GlobalDebugInfoList->DebugInfoCount++;
+        int DebugInfoIndex = GlobalDebugInfoList->DebugInfoUnitsCount;
+        GlobalDebugInfoList->DebugInfoUnitsCount++;
 
-        if(GlobalDebugInfoList->MemoryAllocated <= 
-           GlobalDebugInfoList->DebugInfoCount)
+        if(GlobalDebugInfoList->DebugInfoUnitsAllocated <= 
+           GlobalDebugInfoList->DebugInfoUnitsCount)
         {
             // NOTE(Marko): Grow the debug info list if we've run out of 
             //              memory. 
-
-            GlobalDebugInfoList->MemoryAllocated *= 2;
+            while(GlobalDebugInfoList->DebugInfoUnitsAllocated <=
+                  GlobalDebugInfoList->DebugInfoUnitsCount)      
+            {
+                GlobalDebugInfoList->DebugInfoUnitsAllocated *= 2;    
+            }        
             GlobalDebugInfoList->DebugInfoList = 
                 (mvm_debug_memory_info *)realloc(
                     GlobalDebugInfoList->DebugInfoList,
                     (sizeof GlobalDebugInfoList->DebugInfoList) * 
-                    GlobalDebugInfoList->MemoryAllocated);
+                    GlobalDebugInfoList->DebugInfoUnitsAllocated);
         }
 
         mvm_debug_memory_info *DebugInfo = 
             &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
-        DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
-        DebugInfo->MemoryOperationType = MemoryOperationType_InitialAllocation;
-        DebugInfo->LineNumber = LineNumber;
-    }
 
+        // NOTE(Marko): malloc() is supposed to be the first op. 
+        DebugInfo->DebugInfoOpCount = 1;
+
+        // NOTE(Marko): malloc() is supposed to be associated with an 
+        //              *initial* allocation. As such, we expect to be 
+        //              allocating space for a series of reallocations and a 
+        //              free at some point in the future. 
+
+        // TODO(Marko): Check that malloc() actually succeeds here. 
+        DebugInfo->FilenamesAllocated = DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
+        DebugInfo->Filenames = 
+            (mvm_debug_memory_string *)malloc(
+                (sizeof DebugInfo->Filenames) * 
+                DebugInfo->FilenamesAllocated);
+        DebugInfo->FilenamesCount = 1;
+        DebugInfo->Filenames[0] = ConstStringToMVMDebugMemoryString(Filename);
+
+        DebugInfo->LineNumbersAllocated = 
+            DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
+        DebugInfo->LineNumbers = 
+            (int *)malloc((sizeof DebugInfo->LineNumbers) * 
+                           DebugInfo->LineNumbersAllocated);
+        DebugInfo->LineNumbersCount = 1;
+        DebugInfo->LineNumbers[0] = LineNumber;
+
+
+        DebugInfo->CurrentAddress = Result;
+        DebugInfo->InitialAddress = Result;
+        DebugInfo->PreviousAddress = 0;
+        DebugInfo->Freed = 0;
+
+
+        DebugInfo->MemoryOperationTypesAllocated = 
+            DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
+        DebugInfo->MemoryOperationTypesCount = 1;
+        DebugInfo->MemoryOperationTypes = 
+            (memory_operation_type *)malloc((sizeof DebugInfo->MemoryOperationTypes)*DebugInfo->MemoryOperationTypesAllocated);
+        DebugInfo->MemoryOperationTypes[0] = 
+            MemoryOperationType_InitialAllocation;
+        for(int i = 1; i < DebugInfo->MemoryOperationTypesAllocated; i++)
+        {
+            DebugInfo->MemoryOperationTypes[i] = 
+                MemoryOperationType_NotAssigned;
+        }
+
+        DebugInfo->AddressesAllocated =  DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
+        DebugInfo->AddressesCount = 1;
+        DebugInfo->Addresses = 
+            malloc((sizeof DebugInfo->Addresses)*DebugInfo->AddressesAllocated); 
+        DebugInfo->Addresses[0] = Result;
+        for(int i = 1; i < DebugInfo->AddressesAllocated; i++)
+        {
+            DebugInfo->MemoryOperationTypes[i] = 0;
+        }
+    }
     return Result;
 
 }
