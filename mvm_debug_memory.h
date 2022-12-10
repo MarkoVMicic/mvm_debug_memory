@@ -261,27 +261,61 @@ void MVMTurnOffDebugInfo(const char *Filename,
         {
             GlobalDebugInfoList->TurnOnCount--;
             // NOTE(Marko): Add this turn off call to the debuginfolist. 
-            int DebugInfoIndex = GlobalDebugInfoList->DebugInfoCount;
-            GlobalDebugInfoList->DebugInfoCount++;
+            int DebugInfoIndex = GlobalDebugInfoList->DebugInfoUnitsCount;
+            GlobalDebugInfoList->DebugInfoUnitsCount++;
 
-            if(GlobalDebugInfoList->MemoryAllocated <= 
-               GlobalDebugInfoList->DebugInfoCount)
+            if(GlobalDebugInfoList->DebugInfoUnitsAllocated <= 
+               GlobalDebugInfoList->DebugInfoUnitsCount)
             {
                 // NOTE(Marko): Grow the size of the list since we've run out 
                 //              of memory. 
-                GlobalDebugInfoList->MemoryAllocated *= 2;
+                while(GlobalDebugInfoList->DebugInfoUnitsAllocated <=
+                      GlobalDebugInfoList->DebugInfoUnitsCount)
+                {
+                    GlobalDebugInfoList->DebugInfoUnitsAllocated *= 2;
+                }
                 GlobalDebugInfoList->DebugInfoList = 
                     (mvm_debug_memory_info *)realloc(
                         GlobalDebugInfoList->DebugInfoList,
                         (sizeof GlobalDebugInfoList->DebugInfoList) * 
-                        GlobalDebugInfoList->MemoryAllocated);
+                        GlobalDebugInfoList->DebugInfoUnitsAllocated);
             }
 
             mvm_debug_memory_info *DebugInfo = 
                 &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
-            DebugInfo->Filename = ConstStringToMVMDebugMemoryString(Filename);
-            DebugInfo->MemoryOperationType = MemoryOperationType_TurnOff;
-            DebugInfo->LineNumber = LineNumber;
+
+            // NOTE(Marko): MVMTurnOffDebugInfo() can only ever be associated 
+            //              with one filename and one line number!
+            DebugInfo->FilenamesAllocated = 1; 
+            DebugInfo->Filenames = 
+                (mvm_debug_memory_string *)malloc(
+                    (sizeof DebugInfo->Filenames) * 
+                    DebugInfo->FilenamesAllocated);
+            DebugInfo->Filenames[0] = 
+                ConstStringToMVMDebugMemoryString(Filename);
+
+            DebugInfo->LineNumbersAllocated = 1; 
+            DebugInfo->LineNumbers = 
+                (int *)malloc((sizeof DebugInfo->LineNumbers) * 
+                              DebugInfo->LineNumbersAllocated);
+            DebugInfo->LineNumbers[0] = LineNumber;
+
+            DebugInfo->InitialAddress = 0;
+            DebugInfo->CurrentAddress = 0;
+            DebugInfo->PreviousAddress = 0;
+            DebugInfo->Freed = 0;
+
+            // NOTE(Marko): TurnOff op only ever has one operation associated 
+            //              with it. 
+            DebugInfo->MemoryOperationTypesAllocated = 1;
+            DebugInfo->MemoryOperationTypesCount = 1;
+            DebugInfo->MemoryOperationTypes = 
+                (memory_operation_type *)malloc(sizeof DebugInfo->MemoryOperationTypes);
+            DebugInfo->MemoryOperationTypes[0] = MemoryOperationType_TurnOn;
+
+            DebugInfo->AddressesAllocated = 0;
+            DebugInfo->AddressesCount = 0;
+            DebugInfo->Addresses = 0;
         }
         else
         {
