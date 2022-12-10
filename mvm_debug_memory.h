@@ -4,18 +4,29 @@
 
 /*
     TODO(Marko): A list of things that would be nice to have:
-
+                 
+                 - I think I need a linked list/growable array structure to 
+                   store history for specific debug memory info to e.g. pair 
+                   malloc() with realloc() and free(), and to pair turn-on 
+                   with turn-off
+                 - A file-writing system that can write memory information to 
+                   logs. 
+                 - Print should also tell you how many bytes of memory the 
+                   GlobalDebugInfoList is using in total. (Currently just tells 
+                   you how many list elements were allocated on the heap). 
+                 - Store the address of the variable that is allocated or 
+                   freed. Possibly include old and new addresses for realloc?
+                 - Track reallocations! Make sure you trace the same variable 
+                   as it gets repeatedly allocated
                  - A configurable "max number of debug information" so that we  
                    eventually stop adding to the list, thereby preventing 
                    unfettered growth of the debug info
-                 - A file-writing system that can write memory information to 
-                   logs. 
-                 - Pass __FILE__ and __LINE__ to TurnOnDebugInfo() and 
-                   TurnOffDebugInfo(), and record all the places that they are 
-                   called so that it's easy to find them and remove them when 
-                   done. 
-                 - Store the address of the variable that is allocated or 
-                   freed. Possibly include old and new addresses for realloc?
+                 - Explicit way to free the GlobalDebugInfoList -- perf reasons
+                   (Granular API design)
+                 - Heap Corruption detection? Like Page-aligned malloc. Perhaps 
+                   this is too heavyweight and deserving of its status as a 
+                   separate tool. 
+
 */
 
 #define DEBUG_INFO_LIST_INITIAL_SIZE 32
