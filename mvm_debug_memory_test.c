@@ -4,13 +4,16 @@
 
 int main(int argc, char **argv)
 {
-    TurnOnDebugInfo();
+    MVMTurnOnDebugInfo();
 
     int *InformationArray = (int *)malloc((sizeof *InformationArray) * 32);
 
+    InformationArray = (int *)realloc(InformationArray, 
+                                      (sizeof *InformationArray) * 64);
+
     free(InformationArray);
 
-    TurnOffDebugInfo();
+    MVMTurnOffDebugInfo();
 
     int *NoInformationArray = (int *)malloc((sizeof *InformationArray) * 64);
 
