@@ -531,12 +531,14 @@ void *MVMDebugMalloc(size_t MemorySize,
             GlobalDebugInfoList->DebugInfoList = 
                 (mvm_debug_memory_info *)realloc(
                     GlobalDebugInfoList->DebugInfoList,
-                    (sizeof GlobalDebugInfoList->DebugInfoList) * 
+                    (sizeof *GlobalDebugInfoList->DebugInfoList) * 
                     GlobalDebugInfoList->DebugInfoUnitsAllocated);
         }
 
         mvm_debug_memory_info *DebugInfo = 
             &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+
+        *DebugInfo = (mvm_debug_memory_info){0};
 
         // NOTE(Marko): malloc() is supposed to be the first op. 
         DebugInfo->DebugInfoOpCount = 1;
@@ -546,51 +548,151 @@ void *MVMDebugMalloc(size_t MemorySize,
         //              allocating space for a series of reallocations and a 
         //              free at some point in the future. 
 
-        // TODO(Marko): Check that malloc() actually succeeds here. 
+        //
+        // NOTE(Marko): Initialize Byte Count Array to keep track of the 
+        //              number of bytes allocated each time.
+        //
+        DebugInfo->ByteCountArrayAllocated = 
+            DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
+        DebugInfo->ByteCountArray = 
+            (int *)malloc((sizeof *DebugInfo->ByteCountArray) * 
+                          DebugInfo->ByteCountArrayCount);
+        if(DebugInfo->ByteCountArray)
+        {
+            for(int i = 0; i < DebugInfo->ByteCountArrayAllocated; i++)
+            {
+                DebugInfo->ByteCountArray[i] = 0;
+            }            
+            DebugInfo->ByteCountArray[0] = (int)MemorySize;
+            DebugInfo->ByteCountArrayCount = 1;
+        }
+        else
+        {
+            printf("malloc failed while allocating array for memory sizes\n");
+            DebugInfo->ByteCountArrayAllocated = 0;
+            DebugInfo->ByteCountArrayCount = 0;
+
+        }
+
+
+        //
+        // NOTE(Marko): Initialize Filenames array
+        //
         DebugInfo->FilenamesAllocated = DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
         DebugInfo->Filenames = 
-            (mvm_debug_memory_string *)malloc(
-                (sizeof DebugInfo->Filenames) * 
-                DebugInfo->FilenamesAllocated);
-        DebugInfo->FilenamesCount = 1;
-        DebugInfo->Filenames[0] = ConstStringToMVMDebugMemoryString(Filename);
+            (mvm_debug_memory_string *)malloc((sizeof *DebugInfo->Filenames) * 
+                                              DebugInfo->FilenamesAllocated);
+        if(DebugInfo->Filenames)
+        {
+            for(int FilenameIndex = 0; 
+                FilenameIndex < DebugInfo->FilenamesAllocated; 
+                FilenameIndex++)
+            {
+                    mvm_debug_memory_string *CurrentFilename = 
+                    DebugInfo->Filenames + FilenameIndex;
+                ZeroInitializeEmptyMVMDebugString(CurrentFilename);
+            }
+            // NOTE(Marko): Fill in the first filename, since this is an 
+            //              initial allocation. 
+            AppendConstStringToMVMDebugMemoryString(Filename,
+                                                    DebugInfo->Filenames + 0);
+            DebugInfo->FilenamesCount = 1;
+        }
+        else
+        {
+            printf("malloc() failed while allocating debug string structs.\n");
+            DebugInfo->FilenamesAllocated = 0;
+            DebugInfo->FilenamesCount = 0;
+        }
 
+        //
+        // NOTE(Marko): Initialize line numbers array
+        //
         DebugInfo->LineNumbersAllocated = 
             DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
         DebugInfo->LineNumbers = 
-            (int *)malloc((sizeof DebugInfo->LineNumbers) * 
+            (int *)malloc((sizeof *DebugInfo->LineNumbers) * 
                            DebugInfo->LineNumbersAllocated);
-        DebugInfo->LineNumbersCount = 1;
-        DebugInfo->LineNumbers[0] = LineNumber;
+        if(DebugInfo->LineNumbers)
+        {
+            for(int LineNumbersArrayIndex = 0;
+                LineNumbersArrayIndex < DebugInfo->LineNumbersAllocated;
+                LineNumbersArrayIndex++)
+            {
+                DebugInfo->LineNumbers[LineNumbersArrayIndex] = 0;
+            }
+            DebugInfo->LineNumbersCount = 1;
+            DebugInfo->LineNumbers[0] = LineNumber;
+        }
+        else
+        {
+            printf("malloc() failed while allocating line number array.\n");
+            DebugInfo->LineNumbersCount = 0;
+            DebugInfo->LineNumbersAllocated = 0;
+        }
 
 
+        //
+        // NOTE(Marko): Record the addresses
+        //
         DebugInfo->CurrentAddress = Result;
         DebugInfo->InitialAddress = Result;
         DebugInfo->PreviousAddress = 0;
         DebugInfo->Freed = 0;
 
 
+        //
+        // NOTE(Marko): Initialize the Memory Operation Types array to 
+        //              NotAssigned enum first
+        //
         DebugInfo->MemoryOperationTypesAllocated = 
             DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
         DebugInfo->MemoryOperationTypesCount = 1;
         DebugInfo->MemoryOperationTypes = 
-            (memory_operation_type *)malloc((sizeof DebugInfo->MemoryOperationTypes)*DebugInfo->MemoryOperationTypesAllocated);
-        DebugInfo->MemoryOperationTypes[0] = 
-            MemoryOperationType_InitialAllocation;
-        for(int i = 1; i < DebugInfo->MemoryOperationTypesAllocated; i++)
+            (memory_operation_type *)malloc((sizeof *DebugInfo->MemoryOperationTypes)*DebugInfo->MemoryOperationTypesAllocated);
+        if(DebugInfo->MemoryOperationTypes)
         {
-            DebugInfo->MemoryOperationTypes[i] = 
-                MemoryOperationType_NotAssigned;
+            for(int MemOpIndex = 0;
+                MemOpIndex < DebugInfo->MemoryOperationTypesAllocated;
+                MemOpIndex++)
+            {
+                DebugInfo->MemoryOperationTypes[MemOpIndex] = 
+                    MemoryOperationType_NotAssigned;
+            }
+            DebugInfo->MemoryOperationTypes[0] = 
+                MemoryOperationType_InitialAllocation;
+            DebugInfo->MemoryOperationTypesCount = 1;
+        }
+        else
+        {
+            printf("malloc() failed while allocating array for memory op types\n");
+            DebugInfo->MemoryOperationTypesCount = 0;
+            DebugInfo->MemoryOperationTypesAllocated = 0;
         }
 
+        //
+        // NOTE(Marko): Initialize array to hold memory addresses to 0 
+        // 
         DebugInfo->AddressesAllocated =  DEBUG_INFO_INTERNAL_ARRAY_INITIAL_SIZE;
-        DebugInfo->AddressesCount = 1;
         DebugInfo->Addresses = 
-            malloc((sizeof DebugInfo->Addresses)*DebugInfo->AddressesAllocated); 
-        DebugInfo->Addresses[0] = Result;
-        for(int i = 1; i < DebugInfo->AddressesAllocated; i++)
+            malloc((sizeof *DebugInfo->Addresses)*DebugInfo->AddressesAllocated); 
+        if(DebugInfo->Addresses)
         {
-            DebugInfo->MemoryOperationTypes[i] = 0;
+            for(int AddressIndex = 0; 
+                AddressIndex < DebugInfo->AddressesAllocated; 
+                AddressIndex++)
+            {
+                DebugInfo->Addresses[AddressIndex] = 0;
+            }
+            DebugInfo->AddressesCount = 1;
+            DebugInfo->Addresses[0] = Result;
+        }
+        else
+        {
+            printf("malloc failed while allocating array for memory addresses\n");
+            DebugInfo->AddressesCount = 0;
+            DebugInfo->AddressesAllocated = 0;
+
         }
     }
     return Result;
