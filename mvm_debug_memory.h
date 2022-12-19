@@ -299,41 +299,80 @@ void MVMTurnOnDebugInfo(const char *Filename,
     }
 
     mvm_debug_memory_info *DebugInfo = 
-        &GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
+        GlobalDebugInfoList->DebugInfoList + DebugInfoIndex;
+
+    *DebugInfo = (mvm_debug_memory_info){0};
 
     DebugInfo->DebugInfoOpCount = 1;
+
+    // NOTE(Marko): This is not a memory allocation -- no bytes allocated. 
+    DebugInfo->ByteCountArrayCount = 0;
+    DebugInfo->ByteCountArrayAllocated = 0;
+    DebugInfo->ByteCountArray = 0;
+
     // NOTE(Marko): MVMTurnOnDebugInfo() can only ever be associated 
     //              with one filename and one line number!
     DebugInfo->FilenamesAllocated = 1; 
     DebugInfo->Filenames = 
-        (mvm_debug_memory_string *)malloc(
-            (sizeof DebugInfo->Filenames) * 
-            DebugInfo->FilenamesAllocated);
-    DebugInfo->Filenames[0] = 
-        ConstStringToMVMDebugMemoryString(Filename);
+        (mvm_debug_memory_string *)malloc((sizeof *DebugInfo->Filenames) *
+                                          DebugInfo->FilenamesAllocated);
+    if(DebugInfo->Filenames)
+    {        
+        DebugInfo->FilenamesCount = 1;
+        ZeroInitializeEmptyMVMDebugString(DebugInfo->Filenames);
+        AppendConstStringToMVMDebugMemoryString(Filename,
+                                                DebugInfo->Filenames);
+    }
+    else
+    {
+        printf("malloc() failed while allocating debug string structs\n");
+        DebugInfo->FilenamesAllocated = 0;
+        DebugInfo->FilenamesCount = 0;
+    }
 
     DebugInfo->LineNumbersAllocated = 1; 
     DebugInfo->LineNumbers = 
-        (int *)malloc((sizeof DebugInfo->LineNumbers) * 
+        (int *)malloc((sizeof *DebugInfo->LineNumbers) * 
                       DebugInfo->LineNumbersAllocated);
-    DebugInfo->LineNumbers[0] = LineNumber;
+    if(DebugInfo->LineNumbers)
+    {
+        DebugInfo->LineNumbers[0] = LineNumber;
+        DebugInfo->LineNumbersCount = 1;
+    }
+    else
+    {
+        printf("malloc() failed while allocating array for line numbers\n");
+        DebugInfo->LineNumbersAllocated = 0; 
+        DebugInfo->LineNumbersCount = 0; 
+    }
 
     DebugInfo->InitialAddress = 0;
     DebugInfo->CurrentAddress = 0;
     DebugInfo->PreviousAddress = 0;
-    DebugInfo->Freed = 0;
+    DebugInfo->Freed = FREED_NOT_APPLICABLE;
 
     // NOTE(Marko): TurnOn op only ever has one operation associated with it. 
     DebugInfo->MemoryOperationTypesAllocated = 1;
-    DebugInfo->MemoryOperationTypesCount = 1;
     DebugInfo->MemoryOperationTypes = 
-        (memory_operation_type *)malloc(sizeof DebugInfo->MemoryOperationTypes);
-    DebugInfo->MemoryOperationTypes[0] = MemoryOperationType_TurnOn;
+        (memory_operation_type *)malloc(sizeof *DebugInfo->MemoryOperationTypes);
+    if(DebugInfo->MemoryOperationTypes)
+    {
+        DebugInfo->MemoryOperationTypes[0] = MemoryOperationType_TurnOn;
+        DebugInfo->MemoryOperationTypesCount = 1;
+    }
+    else
+    {
+        printf("malloc() failed while allocating array for memory op types\n");
+        DebugInfo->MemoryOperationTypesAllocated = 0;
+        DebugInfo->MemoryOperationTypesCount = 0;
+    }
 
     DebugInfo->AddressesAllocated = 0;
     DebugInfo->AddressesCount = 0;
     DebugInfo->Addresses = 0;
 }
+
+
 
 void MVMTurnOffDebugInfo(const char *Filename,
                          int LineNumber)
