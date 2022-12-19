@@ -183,8 +183,8 @@ typedef struct mvm_debug_memory_info
     int LineNumbersAllocated;
     int *LineNumbers;
 
-    // TODO(Marko): Implement sort on the current address. This will make 
-    //              finding the allocation easier.
+    // TODO(Marko): Implement sort on the current address. This may make 
+    //              finding addresses easier as we can use binary search. 
     // NOTE(Marko): - For malloc(), realloc(), stores the current address of 
     //                the pointer. 
     //              - For TurnOn and TurnOff, stores 0
@@ -195,6 +195,9 @@ typedef struct mvm_debug_memory_info
     void *PreviousAddress;
 
     void *InitialAddress;
+
+    // NOTE(Marko): Indicator to show whether or not memory has been freed. -1 
+    //              if it does not apply. 
     int Freed;
 
     int MemoryOperationTypesAllocated;
@@ -507,6 +510,9 @@ void *MVMDebugMalloc(size_t MemorySize,
     void *Result = 0;
     Result = malloc(MemorySize);
 
+    // TODO(Marko): and else-if clauses that examine which thing in particular 
+    //              failed: did malloc() fail, or was the GlobalDebugInfoList 
+    //              not initialized, or was it not yet turned on? 
     if(Result && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
     {
         // NOTE(Marko): Only commit information to the debug information list 
@@ -1014,7 +1020,9 @@ void MVMDebugFree(void *Buffer,
 }
 
 
-void MVMDebugMemoryComment(char *MemoryComment)
+void MVMDebugMemoryComment(const char *MemoryComment,
+                           const char *Filename,
+                           int LineNumber)
 {
     
 }
