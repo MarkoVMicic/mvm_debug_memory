@@ -889,10 +889,29 @@ void MVMDebugFree(void *Buffer,
         {
             DebugInfo->DebugInfoOpCount++;
 
+            int ByteCountArrayIndex = DebugInfo->ByteCountArrayCount;
+            DebugInfo->ByteCountArrayCount++;
+            if(DebugInfo->ByteCountArrayAllocated <= 
+               DebugInfo->ByteCountArrayCount)
+            {
+                while(DebugInfo->ByteCountArrayAllocated <= 
+                      DebugInfo->ByteCountArrayCount)
+                {
+                    DebugInfo->ByteCountArrayAllocated *= 2;
+                }
+                DebugInfo->ByteCountArray = 
+                    (int *)realloc(DebugInfo->ByteCountArray,
+                                   (sizeof *DebugInfo->ByteCountArray) * 
+                                   DebugInfo->ByteCountArrayAllocated);
+            }
+            // NOTE(Marko): Store negative number for freed memory
+            DebugInfo->ByteCountArray[ByteCountArrayIndex] = 
+                -DebugInfo->ByteCountArray[ByteCountArrayIndex-1];
+
 
             int FilenameIndex = DebugInfo->FilenamesCount; 
             DebugInfo->FilenamesCount++;
-            if(DebugInfo->FilenamesAllocated <= DebugInfo->FilenamesCount)
+            if(DebugInfo->FilenamesAllocated < DebugInfo->FilenamesCount)
             {
                 // NOTE(Marko): Increase size of filenames array if necessary
                 while(DebugInfo->FilenamesAllocated <= 
@@ -903,11 +922,22 @@ void MVMDebugFree(void *Buffer,
                 DebugInfo->Filenames = 
                     (mvm_debug_memory_string *)realloc(
                         DebugInfo->Filenames,
-                        (sizeof DebugInfo->Filenames) * 
+                        (sizeof *DebugInfo->Filenames) * 
                         DebugInfo->FilenamesAllocated);
+                // NOTE(Marko): Zero-initialize the newly allocated empty 
+                //              strings
+                for(int NewAllocatedFilenameIndex = FilenameIndex;
+                    NewAllocatedFilenameIndex < DebugInfo->FilenamesAllocated;
+                    NewAllocatedFilenameIndex++)
+                {
+                    mvm_debug_memory_string *CurrentFilename = 
+                        DebugInfo->Filenames + NewAllocatedFilenameIndex;
+                    ZeroInitializeEmptyMVMDebugString(CurrentFilename);
+                }
             }
-            DebugInfo->Filenames[FilenameIndex] = 
-                ConstStringToMVMDebugMemoryString(Filename);
+            AppendConstStringToMVMDebugMemoryString(Filename,
+                                                    DebugInfo->Filenames + 
+                                                    FilenameIndex);
 
             int LineNumberIndex = DebugInfo->LineNumbersCount;
             DebugInfo->LineNumbersCount++;
@@ -923,7 +953,7 @@ void MVMDebugFree(void *Buffer,
                 DebugInfo->LineNumbers = 
                     (int *)realloc(
                         DebugInfo->LineNumbers,
-                        (sizeof DebugInfo->LineNumbers) * 
+                        (sizeof *DebugInfo->LineNumbers) * 
                         DebugInfo->LineNumbersAllocated);
             }
             DebugInfo->LineNumbers[LineNumberIndex] = LineNumber;
@@ -947,7 +977,7 @@ void MVMDebugFree(void *Buffer,
                 DebugInfo->MemoryOperationTypes = 
                     (memory_operation_type *)realloc(
                         DebugInfo->MemoryOperationTypes,
-                        (sizeof DebugInfo->MemoryOperationTypes) * 
+                        (sizeof *DebugInfo->MemoryOperationTypes) * 
                         DebugInfo->MemoryOperationTypesAllocated);
             }
             DebugInfo->MemoryOperationTypes[MemoryOperationTypeIndex] =
@@ -967,7 +997,7 @@ void MVMDebugFree(void *Buffer,
                 DebugInfo->Addresses = 
                     (void *)realloc(
                         DebugInfo->Addresses,
-                        (sizeof DebugInfo->Addresses) * 
+                        (sizeof *DebugInfo->Addresses) * 
                         DebugInfo->AddressesAllocated);
             }
             DebugInfo->Addresses[AddressesIndex] = 
