@@ -165,6 +165,14 @@ typedef enum memory_operation_type
 typedef struct mvm_debug_memory_info
 {
     int DebugInfoOpCount;
+
+    // NOTE(Marko): Growable array to store the number of bytes (de)allocated 
+    //              using memory allocation ops. Negative values correspond 
+    //              with freed amounts. 
+    int ByteCountArrayCount;
+    int ByteCountArrayAllocated;
+    int *ByteCountArray;
+
     int FilenamesCount;
     int FilenamesAllocated;
     mvm_debug_memory_string *Filenames;
