@@ -111,6 +111,19 @@ mvm_debug_memory_string *CreateEmptyMVMDebugString(void)
 }
 
 
+void ZeroInitializeEmptyMVMDebugString(mvm_debug_memory_string *MVMDebugString)
+{
+    MVMDebugString->Length = 0;
+    MVMDebugString->MemoryAllocated = DEBUG_STRING_INITIAL_SIZE;
+    MVMDebugString->Contents = (char *)malloc(MVMDebugString->MemoryAllocated);
+    if(!MVMDebugString->Contents)
+    {
+        printf("malloc() failed when allocating memory for a string\n");
+        MVMDebugString->MemoryAllocated = 0;
+    }
+}
+
+
 typedef enum memory_operation_type
 {
     MemoryOperationType_NotAssigned = 0,
