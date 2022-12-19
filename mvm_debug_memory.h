@@ -79,6 +79,38 @@ mvm_debug_memory_string ConstStringToMVMDebugMemoryString(const char *String)
     return Result;
 }
 
+
+mvm_debug_memory_string *CreateEmptyMVMDebugString(void)
+{
+    mvm_debug_memory_string *Result = (mvm_debug_memory_string *)malloc(sizeof *Result);
+
+    if(Result)
+    {
+        Result->Length = 0;
+        Result->MemoryAllocated = DEBUG_STRING_INITIAL_SIZE;
+        Result->Contents = (char *)malloc(Result->MemoryAllocated);
+        if(!Result->Contents)
+        {
+            Result->MemoryAllocated = 0;
+            Result->Contents = 0;
+            printf("malloc failed while allocating memory for contents of memory debug string.\n\tAttempted to allocate %d bytes.\n\tFile: %s\n\tLine %d\n",
+            Result->MemoryAllocated,
+            __FILE__, 
+            __LINE__);
+        }
+    }
+    else
+    {
+        printf("malloc failed while allocating memory for mvm_debug_memory_string struct.\n\tAttempted to allocate %d bytes.\n\tFile: %s\n\tLine: %d\n", 
+            (sizeof *Result), 
+            __FILE__, 
+            __LINE__);
+    }
+
+    return Result;
+}
+
+
 typedef enum memory_operation_type
 {
     MemoryOperationType_NotAssigned = 0,
