@@ -254,15 +254,22 @@ void MVMTurnOnDebugInfo(const char *Filename,
         //              initialize it. 
         GlobalDebugInfoList = 
             (mvm_debug_memory_list *)malloc((sizeof *GlobalDebugInfoList));
+        if(GlobalDebugInfoList)
+        {
+            *GlobalDebugInfoList = (mvm_debug_memory_list){0};
+            GlobalDebugInfoList->TurnOnCount = 1;
+            GlobalDebugInfoList->DebugInfoUnitsCount = 0;
+            GlobalDebugInfoList->DebugInfoUnitsAllocated = DEBUG_INFO_LIST_INITIAL_SIZE;
 
-        GlobalDebugInfoList->TurnOnCount = 1;
-        GlobalDebugInfoList->DebugInfoUnitsCount = 0;
-        GlobalDebugInfoList->DebugInfoUnitsAllocated = DEBUG_INFO_LIST_INITIAL_SIZE;
-
-        GlobalDebugInfoList->DebugInfoList = 
-            (mvm_debug_memory_info *)malloc(
-                (sizeof GlobalDebugInfoList->DebugInfoList) * 
+            GlobalDebugInfoList->DebugInfoList = 
+                (mvm_debug_memory_info *)malloc(
+                    (sizeof *GlobalDebugInfoList->DebugInfoList) * 
                 GlobalDebugInfoList->DebugInfoUnitsAllocated);
+        }
+        else
+        {
+            printf("malloc() failed when attempting to initially allocate the global mvm_debug_memory_list\n");
+        }
     }
     else
     {
