@@ -124,6 +124,29 @@ void ZeroInitializeEmptyMVMDebugString(mvm_debug_memory_string *MVMDebugString)
 }
 
 
+void AppendConstStringToMVMDebugMemoryString(const char *Source,
+                                             mvm_debug_memory_string *Dest)
+{
+    int SourceStringLength = strlen(Source);
+    if(Dest->MemoryAllocated <= (Dest->Length + SourceStringLength))
+    {
+        while(Dest->MemoryAllocated <= (Dest->Length + SourceStringLength))
+        {
+            Dest->MemoryAllocated *= 2;
+        }
+        Dest->Contents = (char *)realloc(Dest->Contents, 
+                                         Dest->MemoryAllocated);
+    }
+
+    int SourceStringIndex = 0;
+    while(Source[SourceStringIndex])
+    {
+        Dest->Contents[Dest->Length++] = Source[SourceStringIndex++];
+    }
+    Dest->Contents[Dest->Length] = '\0';
+}
+
+
 typedef enum memory_operation_type
 {
     MemoryOperationType_NotAssigned = 0,
