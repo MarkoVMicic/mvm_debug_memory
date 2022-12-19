@@ -708,6 +708,154 @@ void *MVMDebugRealloc(void *Buffer,
 {
     void *Result = realloc(Buffer, MemorySize);
 
+    if(Result && GlobalDebugInfoList && (GlobalDebugInfoList->TurnOnCount > 0))
+    {
+        // NOTE(Marko): Only commit information to the debug information list 
+        //              if 
+        //              1) realloc() succeeded 
+        //              2) GlobalDebugInfoList has been initialized 
+        //              3) the debug memory tool has been turned on. 
+        mvm_debug_memory_info *DebugInfo = 
+            MVMSearchDebugInfoListByCurrentAddress(Buffer);
+        if(DebugInfo)
+        {
+            DebugInfo->DebugInfoOpCount++;
+
+            //
+            // NOTE(Marko): Add byte amount allocated to byte array
+            //
+            int ByteCountArrayIndex = DebugInfo->ByteCountArrayCount;
+            DebugInfo->ByteCountArrayCount++;
+            if(DebugInfo->ByteCountArrayAllocated <= 
+               DebugInfo->ByteCountArrayCount)
+            {
+                while(DebugInfo->ByteCountArrayAllocated <= 
+                      DebugInfo->ByteCountArrayCount)
+                {
+                    DebugInfo->ByteCountArrayAllocated *= 2;
+                }
+                DebugInfo->ByteCountArray = 
+                    (int *)realloc(DebugInfo->ByteCountArray,
+                                   (sizeof *DebugInfo->ByteCountArray) * 
+                                   DebugInfo->ByteCountArrayAllocated);
+            }
+            DebugInfo->ByteCountArray[ByteCountArrayIndex] = (int)MemorySize;
+
+            //
+            // NOTE(Marko): Add filename to array
+            //
+            int FilenameIndex = DebugInfo->FilenamesCount; 
+            DebugInfo->FilenamesCount++;
+            if(DebugInfo->FilenamesAllocated < DebugInfo->FilenamesCount)
+            {
+                // NOTE(Marko): Increase size of filenames array if necessary
+                while(DebugInfo->FilenamesAllocated <= 
+                      DebugInfo->FilenamesCount)
+                {
+                    DebugInfo->FilenamesAllocated *= 2;
+                }
+                DebugInfo->Filenames = 
+                    (mvm_debug_memory_string *)realloc(
+                        DebugInfo->Filenames,
+                        (sizeof *DebugInfo->Filenames) * 
+                        DebugInfo->FilenamesAllocated);
+                // NOTE(Marko): Zero-initialize the newly allocated empty 
+                //              strings
+                for(int NewAllocatedFilenameIndex = FilenameIndex;
+                    NewAllocatedFilenameIndex < DebugInfo->FilenamesAllocated;
+                    NewAllocatedFilenameIndex++)
+                {
+                    mvm_debug_memory_string *CurrentFilename = 
+                        DebugInfo->Filenames + NewAllocatedFilenameIndex;
+                    ZeroInitializeEmptyMVMDebugString(CurrentFilename);
+                }
+            }
+            AppendConstStringToMVMDebugMemoryString(Filename,
+                                                    DebugInfo->Filenames + 
+                                                    FilenameIndex);
+
+            //
+            // NOTE(Marko): Add Line number to array
+            //
+            int LineNumberIndex = DebugInfo->LineNumbersCount;
+            DebugInfo->LineNumbersCount++;
+            if(DebugInfo->LineNumbersAllocated <= DebugInfo->LineNumbersCount)
+            {
+                // NOTE(Marko): Increase size of line numbers array if 
+                //              necessary
+                while(DebugInfo->LineNumbersAllocated <= 
+                      DebugInfo->LineNumbersCount)
+                {
+                    DebugInfo->LineNumbersAllocated *= 2;
+                }
+                DebugInfo->LineNumbers = 
+                    (int *)realloc(
+                        DebugInfo->LineNumbers,
+                        (sizeof *DebugInfo->LineNumbers) * 
+                        DebugInfo->LineNumbersAllocated);
+            }
+            DebugInfo->LineNumbers[LineNumberIndex] = LineNumber;
+
+            //
+            // NOTE(Marko): Update the current and previous address
+            //
+            DebugInfo->PreviousAddress = DebugInfo->CurrentAddress;
+            DebugInfo->CurrentAddress = Result;
+            DebugInfo->Freed = 0;
+
+            //
+            // NOTE(Marko): Add memory operation type to array
+            //
+            int MemoryOperationTypeIndex = 
+                DebugInfo->MemoryOperationTypesCount;
+            DebugInfo->MemoryOperationTypesCount++;
+            if(DebugInfo->MemoryOperationTypesAllocated <=
+               DebugInfo->MemoryOperationTypesCount)
+            {
+                while(DebugInfo->MemoryOperationTypesAllocated <=
+                      DebugInfo->MemoryOperationTypesCount)
+                {
+                    DebugInfo->MemoryOperationTypesAllocated *= 2;
+                }
+                DebugInfo->MemoryOperationTypes = 
+                    (memory_operation_type *)realloc(
+                        DebugInfo->MemoryOperationTypes,
+                        (sizeof *DebugInfo->MemoryOperationTypes) * 
+                        DebugInfo->MemoryOperationTypesAllocated);
+            }
+            DebugInfo->MemoryOperationTypes[MemoryOperationTypeIndex] =
+                MemoryOperationType_ReAllocation;
+
+            // 
+            // NOTE(Marko): Add address to array
+            //
+            int AddressesIndex = DebugInfo->AddressesCount;
+            DebugInfo->AddressesCount++;
+            if(DebugInfo->AddressesAllocated <= 
+                DebugInfo->AddressesCount)
+            {
+                // NOTE(Marko): Grow the addresses array if necessary
+                while(DebugInfo->AddressesAllocated <=
+                      DebugInfo->AddressesCount)
+                {
+                    DebugInfo->AddressesAllocated *= 2;
+                }
+                DebugInfo->Addresses = 
+                    (void *)realloc(
+                        DebugInfo->Addresses,
+                        (sizeof *DebugInfo->Addresses) * 
+                        DebugInfo->AddressesAllocated);
+            }
+            DebugInfo->Addresses[AddressesIndex] = 
+                DebugInfo->CurrentAddress;
+        }
+        else
+        {
+            printf("Unable to find allocated memory located at %p in the debug info list.\n");
+        }
+
+    }
+
     return Result;
 
 }
