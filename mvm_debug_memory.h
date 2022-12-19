@@ -149,6 +149,38 @@ void AppendConstStringToMVMDebugMemoryString(const char *Source,
 }
 
 
+void MVMAppendDebugString(mvm_debug_memory_string SourceMVMDebugString,
+                          mvm_debug_memory_string AppendedMVMDebugString)
+{
+    size_t SourceMVMDebugStringCurrentIndex = SourceMVMDebugString.Length;
+
+    SourceMVMDebugString.Length += AppendedMVMDebugString.Length;
+
+    if(SourceMVMDebugString.MemoryAllocated <= SourceMVMDebugString.Length)
+    {
+        // NOTE(Marko): Grow the string if the memory allocated is too small to 
+        //              fit the addition of the appended string
+        while(SourceMVMDebugString.MemoryAllocated <= 
+              SourceMVMDebugString.Length)
+        {
+            SourceMVMDebugString.MemoryAllocated *= 2;
+        }
+        SourceMVMDebugString.Contents = 
+            realloc(SourceMVMDebugString.Contents, 
+                    SourceMVMDebugString.MemoryAllocated);
+    }
+
+    for(int AppendedMVMDebugStringCurrentIndex = 0;
+        AppendedMVMDebugStringCurrentIndex < AppendedMVMDebugString.Length;
+        ++AppendedMVMDebugStringCurrentIndex, 
+        ++SourceMVMDebugStringCurrentIndex)
+    {
+        SourceMVMDebugString.Contents[SourceMVMDebugStringCurrentIndex] = 
+        AppendedMVMDebugString.Contents[AppendedMVMDebugStringCurrentIndex];
+    }
+}
+
+
 typedef enum memory_operation_type
 {
     MemoryOperationType_NotAssigned = 0,
