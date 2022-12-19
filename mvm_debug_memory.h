@@ -1021,63 +1021,164 @@ void MVMDebugMemoryComment(char *MemoryComment)
 
 void MVMDebugMemoryPrintAllocations(void)
 {
+    printf("*************************************************************\n");
+    printf("*************************************************************\n");
+    printf("Printing memory allocation information. \n\n");
+
 
     printf("Turn on - Turn Off calls (0 means debug is off now): %d\n", 
            GlobalDebugInfoList->TurnOnCount);
     printf("Debug Memory Operations Count: %d\n", 
-           GlobalDebugInfoList->DebugInfoCount);
+           GlobalDebugInfoList->DebugInfoUnitsCount);
+    printf("Debug Memory Operations Allocated: %d\n", 
+           GlobalDebugInfoList->DebugInfoUnitsAllocated);
 
-    // TODO(Marko): Compute total amount of memory used for debugging purposes 
-    //              in bytes. 
-    printf("Debug Info List Allocated Size: %d\n",
-           GlobalDebugInfoList->MemoryAllocated);
+    unsigned int DebugMemoryInfoBytesAllocated = 0;
+    unsigned int ProgramBytesAllocated = 0;
 
-    printf("------------\n");
+    printf("\n\n------------\n");
+
     for(int DebugInfoIndex = 0; 
-        DebugInfoIndex < GlobalDebugInfoList->DebugInfoCount; 
+        DebugInfoIndex < GlobalDebugInfoList->DebugInfoUnitsCount; 
         ++DebugInfoIndex)
     {
-        printf("Allocation %d:\n", DebugInfoIndex);
+        printf("Debug Information Unit #%d:\n\n", DebugInfoIndex);
 
         mvm_debug_memory_info DebugInfo = 
             GlobalDebugInfoList->DebugInfoList[DebugInfoIndex];
-        
-        char MemoryOperationTypeString[32];
-        switch(DebugInfo.MemoryOperationType)
+
+        for(int MemoryOperationIndex = 0; 
+            MemoryOperationIndex < DebugInfo.DebugInfoOpCount;
+            MemoryOperationIndex++)
         {
-            case MemoryOperationType_InitialAllocation:
-            {
-                strcpy(MemoryOperationTypeString, "malloc");
+            printf("\t---------\n");
+            printf("\tMemory Operation #%d\n", MemoryOperationIndex);
+            memory_operation_type MemoryOperation = 
+                DebugInfo.MemoryOperationTypes[MemoryOperationIndex];
 
-            } break;
-            case MemoryOperationType_ReAllocation:
+            printf("\t\tMemory Operation Type: ");
+            switch(MemoryOperation)
             {
-                strcpy(MemoryOperationTypeString, "realloc");
+                case MemoryOperationType_InitialAllocation: 
+                {
+                    int BytesAllocated = 
+                        DebugInfo.ByteCountArray[MemoryOperationIndex];
+                    void *AddressAllocatedTo = 
+                        DebugInfo.Addresses[MemoryOperationIndex];
+                    mvm_debug_memory_string Filename = 
+                        DebugInfo.Filenames[MemoryOperationIndex];
+                    int LineNumber = 
+                        DebugInfo.LineNumbers[MemoryOperationIndex];
+                    printf("Initial Allocation.\n");
+                    printf("\t\tAllocated %d bytes into address 0x%p\n",
+                           BytesAllocated,
+                           AddressAllocatedTo);
+                    printf("\t\tin file %s\n", 
+                           Filename.Contents);
+                    printf("\t\ton line %d\n", 
+                           LineNumber);
 
-            } break;
-            case MemoryOperationType_Free:
-            {
-                strcpy(MemoryOperationTypeString, "free");
+                } break;
 
-            } break;
-            case MemoryOperationType_TurnOn:
-            {
-                strcpy(MemoryOperationTypeString, "TurnOn");
-            } break;
-            case MemoryOperationType_TurnOff:
-            {
-                strcpy(MemoryOperationTypeString, "TurnOff");
-            } break;
-            case MemoryOperationType_Comment:
-            {
-                strcpy(MemoryOperationTypeString, "\0");
-            } break;
+                case MemoryOperationType_ReAllocation: 
+                {
+                    int PreviousByteCount = 
+                        DebugInfo.ByteCountArray[MemoryOperationIndex-1];
+                    int CurrentByteCount = 
+                        DebugInfo.ByteCountArray[MemoryOperationIndex];
+                    int ByteAllocationDifference = 
+                        CurrentByteCount - PreviousByteCount;
+                    char ByteDifferenceSign = 
+                        (ByteAllocationDifference >= 0) ? '+' : '-';
+                    void *InitialAddress = DebugInfo.InitialAddress;
+                    void *PreviousAddress = 
+                        DebugInfo.Addresses[MemoryOperationIndex-1];
+                    void *CurrentAddress = 
+                        DebugInfo.Addresses[MemoryOperationIndex];
+                    mvm_debug_memory_string Filename = 
+                        DebugInfo.Filenames[MemoryOperationIndex];
+                    int LineNumber = 
+                        DebugInfo.LineNumbers[MemoryOperationIndex];
+
+                    printf("Reallocation\n");
+                    printf("\t\tOld allocation: %d bytes from address 0x%p\n",
+                           PreviousByteCount,
+                           PreviousAddress);
+                    printf("\t\tNew allocation: %d bytes into address 0x%p\n",
+                           CurrentByteCount,
+                           CurrentAddress);
+                    printf("\t\tAllocation changed by %c%d bytes\n",
+                           ByteDifferenceSign, 
+                           ByteAllocationDifference);
+                    printf("\t\tInitial address: 0x%p\n",
+                           InitialAddress);
+                    printf("\t\tin file %s\n", 
+                           Filename.Contents);
+                    printf("\t\ton line %d\n", 
+                           LineNumber);
+
+                } break;
+
+                case MemoryOperationType_Free: 
+                {
+                    int BytesFreed = 
+                        -DebugInfo.ByteCountArray[MemoryOperationIndex];
+                    void *AddressFreed = 
+                        DebugInfo.PreviousAddress;
+                    void *InitialAddress = 
+                        DebugInfo.InitialAddress;
+                    mvm_debug_memory_string Filename = 
+                        DebugInfo.Filenames[MemoryOperationIndex];
+                    int LineNumber = 
+                        DebugInfo.LineNumbers[MemoryOperationIndex];
+
+                    printf("Free\n");
+                    printf("\t\tFreed %d bytes from address 0x%p\n",
+                           BytesFreed,
+                           AddressFreed);
+                    printf("\t\tMemory Initially allocated into address 0x%p\n", 
+                           InitialAddress);                        
+                    printf("\t\tin file %s\n", 
+                           Filename.Contents);
+                    printf("\t\ton line %d\n", 
+                           LineNumber);
+                } break;
+
+                case MemoryOperationType_Comment: 
+                {
+
+                } break;
+
+
+                case MemoryOperationType_TurnOn: 
+                {
+                    mvm_debug_memory_string Filename = 
+                        DebugInfo.Filenames[MemoryOperationIndex];
+                    int LineNumber = 
+                        DebugInfo.LineNumbers[MemoryOperationIndex];
+                    printf("Turn On Debug Tool\n");
+                    printf("\t\tin file %s\n", 
+                           Filename.Contents);
+                    printf("\t\ton line %d\n", 
+                           LineNumber);
+                } break;
+                
+                case MemoryOperationType_TurnOff: 
+                {
+                    mvm_debug_memory_string Filename = 
+                        DebugInfo.Filenames[MemoryOperationIndex];
+                    int LineNumber = 
+                        DebugInfo.LineNumbers[MemoryOperationIndex];
+                    printf("Turn Off Debug Tool\n");
+                    printf("\t\tin file %s\n", 
+                           Filename.Contents);
+                    printf("\t\ton line %d\n", 
+                           LineNumber);
+                } break;
+            }
         }
-        printf("\t%s called\n", MemoryOperationTypeString);
-        printf("\tin file %s\n", DebugInfo.Filename.Contents);
-        printf("\ton line %d\n", DebugInfo.LineNumber);
-        printf("------------\n");
-    }
+        printf("--------------------------------------------\n\n");
+    }      
     printf("\n\n");
 }
 
@@ -1107,7 +1208,6 @@ void MVMDebugMemoryPrintAllocations(void)
     #define MVMTurnOffDebugInfo() 
 
 #endif
-
 
 #define MVM_DEBUG_MEMORY_H
 #endif
